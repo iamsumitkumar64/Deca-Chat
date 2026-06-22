@@ -1,0 +1,178 @@
+"use client";
+
+import { Avatar, Box, Button, Card, CardContent, CircularProgress, Container, Divider, Modal, Typography } from "@mui/material";
+import styles from "./room.module.css";
+import { useEffect, useMemo, useState } from "react";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks.ts";
+import { getRoomMembers } from "@/redux/feature/member/member-action";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { RootState } from "@/redux/store";
+import InfiniteScroll from "react-infinite-scroll-component";
+import { RoomMember } from "@/redux/feature/member/member-type";
+import { enqueueSnackbar } from "notistack";
+import LinkShareComp from "@/component/link-share-comp/link-share-comp";
+import ChatIcon from '@mui/icons-material/Chat';
+import ShareIcon from '@mui/icons-material/Share';
+import GroupsIcon from '@mui/icons-material/Groups';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import Image from "next/image";
+import { getChatTimeFormat } from "@/utils/time-format";
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import { BarChartComp } from "@/component/bar-chart-comp/bar-chart-comp";
+
+export default function SpecificRoom() {
+  const dispatch = useAppDispatch();
+  const router = useRouter();
+  const { uuid } = useParams();
+  const room_uuid = String(uuid);
+  const { roomMembers, roomMembersTotalDocuments } = useAppSelector((state: RootState) => state.roomMemberReducer);
+  const { viewerCounts } = useAppSelector((state: RootState) => state.roomReducer);
+  const { roomChats } = useAppSelector((state: RootState) => state.chatReducer);
+  const members = roomMembers?.[room_uuid];
+  const total_members = roomMembersTotalDocuments?.[room_uuid];
+  const [offset, setOffset] = useState(Number(process.env.NEXT_PUBLIC_PAGE_OFFSET) || 0);
+  const limit = Number(process.env.NEXT_PUBLIC_PAGE_LIMIT) || 10;
+  const [isLinkOpen, setIsLinkOpen] = useState<boolean>(false);
+
+  const pathname = usePathname();
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8090";
+  const searchParams = useSearchParams();
+  const shareUrl = `${BACKEND_URL}${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+  const title = 'Awesome Room Page please visit once';
+
+  useEffect(() => {
+    dispatch(getRoomMembers({ room_uuid: room_uuid, limit: 0, offset: 0 })).unwrap();
+  }, []);
+
+  const fetchRooms = async () => {
+    try {
+      if (members?.length >= total_members) return;
+
+      const newOffset = offset + limit;
+      setOffset(newOffset);
+      await dispatch(getRoomMembers({ room_uuid: room_uuid, limit, offset: newOffset, })).unwrap();
+    } catch (error: any) {
+      enqueueSnackbar(error, { variant: "error" });
+      console.log(error);
+    }
+  };
+
+  return (
+    <Box className={styles.container}>
+      <Box className={styles.header}>
+        <Box className={styles.roomInfo}>
+          <Typography variant="h4" className={styles.heading}>
+            {members?.[0] ? members[0].room.name : "Specific Room"}
+          </Typography>
+
+          <Typography className={styles.subHeading}>
+            {members?.[0] ? members[0].room.description : "Specific Room Description"}
+          </Typography>
+        </Box>
+
+        <Box className={styles.roomButtonCard}>
+          <Button
+            className={styles.roomCard}
+            onClick={() => router.push(`/room/${room_uuid}/chat`)}
+          >
+            <ChatIcon />
+            View Live Chat
+          </Button>
+
+          <Button
+            className={styles.roomCard}
+            onClick={() => setIsLinkOpen(!isLinkOpen)}
+          >
+            <ShareIcon />
+            Share Room
+          </Button>
+        </Box>
+
+        <Box className={styles.roomViewInfo}>
+          <Box className={styles.viewInfo}>
+            <Typography variant="h2" className={styles.viewTitle}>
+              Active Members
+            </Typography>
+            <Typography variant="h4" className={styles.activeMember}>
+              10
+            </Typography>
+          </Box>
+
+          <Box className={styles.viewInfo}>
+            <Typography variant="h2" className={styles.viewTitle}>
+              Viewers
+            </Typography>
+            <Typography variant="h4" className={styles.viewerCount}>
+              {viewerCounts[room_uuid] || 0}
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      <Box className={styles.roomSideInfo}>
+        <Box className={styles.manangeMemberInfo}>
+          <Typography variant="h2" className={styles.manangeMemberTitle}>
+            <GroupsIcon className={styles.groupIcon} /> Manage Members
+          </Typography>
+
+          <Box id="scrollableDiv" className={styles.scrollWrapper}>
+            <InfiniteScroll
+              dataLength={members?.length || 0}
+              next={fetchRooms}
+              hasMore={members?.length < total_members}
+              loader={<Box className={styles.loader}><CircularProgress size={30} /></Box>}
+              endMessage={<Typography className={styles.endMessage}>Yay! You have seen it all</Typography>}
+              scrollableTarget="scrollableDiv"
+            >
+              <Box className={styles.roomMemberWrapper}>
+                {members && members.map((member: RoomMember) => {
+                  const lastChat = roomChats[room_uuid]
+                    ?.filter(mem => mem.member.user_uuid === member.user_uuid)
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+                  return (
+                    <Card
+                      key={member.uuid}
+                      className={styles.card}
+                      elevation={2}
+                    >
+                      <CardContent className={styles.cardContent}>
+                        <Image src={member.user.profile_image} width={100} height={100} alt="Profile image not found" className={styles.profileImage} />
+                        <FiberManualRecordIcon className={member.user.is_online ? styles.bottomGreenDotMessaging : styles.bottomGrayDotMessaging} />
+
+                        <Box className={styles.cardBoxContent}>
+                          <Typography className={styles.email}>Email : {member.user.email}</Typography>
+                          <Typography className={styles.lastMessage}>Last Message: {lastChat ? getChatTimeFormat(lastChat.created_at) : 'N/A'}</Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
+            </InfiniteScroll>
+          </Box>
+        </Box>
+
+        <Box className={styles.roomActivityInfo}>
+          <Box className={styles.manageActivityInfo}>
+            <Typography variant="h2" className={styles.roomActivityTitle}>
+              <TrendingUpIcon className={styles.chartIcon} /> Activity Overview
+            </Typography>
+          </Box>
+
+          <Box className={styles.manageActivityChart}>
+            <Typography variant="h2" className={styles.roomActivityChartTitle}>
+              Message Velocity
+            </Typography>
+
+            <Box className={styles.manageActivityChartComp}>
+              <BarChartComp />
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      <LinkShareComp open={isLinkOpen} onClose={() => setIsLinkOpen(false)} data={{ shareUrl: shareUrl, title: title }} />
+    </Box>
+  );
+}
