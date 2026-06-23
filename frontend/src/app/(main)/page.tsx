@@ -19,19 +19,23 @@ import DoDisturbIcon from '@mui/icons-material/DoDisturb';
 export default function Home() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state: RootState) => state.authReducer);
   const { publicRooms, publicRoomsTotalDocuments, joinedRooms, viewerCounts } = useAppSelector((state: RootState) => state.roomReducer);
   const { roomMembersTotalDocuments } = useAppSelector((state: RootState) => state.roomMemberReducer);
   const [offset, setOffset] = useState(Number(process.env.NEXT_PUBLIC_PAGE_OFFSET) || 0);
   const limit = Number(process.env.NEXT_PUBLIC_PAGE_LIMIT) || 10;
+  const ROOM_MEMBER_LIMIT = Number(process.env.NEXT_PUBLIC_ROOM_MEMBER_LIMIT) || 10;
   const [value, setValue] = useState('active');
-  const handleChange = (event: React.SyntheticEvent, newValue: string) => {
-    setValue(newValue);
-  };
 
   useEffect(() => {
-    if (!publicRooms.length || !getJoinedRooms.length) {
-      dispatch(getJoinedRooms({ limit, offset: 0, })).unwrap();
+    if (!publicRooms.length) {
       dispatch(getPublicRooms({ limit, offset: 0, })).unwrap();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!getJoinedRooms.length) {
+      dispatch(getJoinedRooms({ limit, offset: 0, })).unwrap();
     }
   }, []);
 
@@ -42,14 +46,24 @@ export default function Home() {
       const newOffset = offset + limit;
       setOffset(newOffset);
       await dispatch(getPublicRooms({ limit, offset: newOffset, })).unwrap();
+      await dispatch(getJoinedRooms({ limit, offset: newOffset, })).unwrap();
     } catch (error: any) {
       enqueueSnackbar(error, { variant: "error" });
       console.log(error);
     }
   };
 
-  const handleJoin = async (uuid: string) => {
+  const handleRoomJoin = async (uuid: string) => {
     try {
+      if (!user) {
+        enqueueSnackbar("Login for conversation", { variant: "info" });
+        return;
+      }
+      const memberCount = roomMembersTotalDocuments[uuid] || 1;
+      if (memberCount >= ROOM_MEMBER_LIMIT) {
+        enqueueSnackbar("Max Limit Exceeded", { variant: "error" });
+        return;
+      }
       await dispatch(createRoomMember({ room_uuid: uuid })).unwrap();
     } catch (error: any) {
       enqueueSnackbar(error, { variant: "error" });
@@ -57,6 +71,9 @@ export default function Home() {
     }
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+    setValue(newValue);
+  };
 
   return (
     <Box className={styles.container}>
@@ -90,7 +107,7 @@ export default function Home() {
         <Box className={styles.optionContainer}>
           <Tabs
             value={value}
-            onChange={handleChange}
+            onChange={handleTabChange}
             className={styles.tabContainer}
           >
             <Tab value="active" label="Active" className={styles.customTab} />
@@ -126,7 +143,7 @@ export default function Home() {
                         {/* <Typography className={styles.description}>{room.description}</Typography> */}
                         <Typography className={styles.memberCount}><VisibilityOutlinedIcon />{viewerCounts[room.uuid] || 0} viewers</Typography>
                         {
-                          memberCount < Number(process.env.ROOM_MEMBER_LIMIT) || 10 ?
+                          memberCount <= ROOM_MEMBER_LIMIT ?
                             <Typography className={styles.memberCount}><GroupsIcon />{memberCount} members</Typography> :
                             <Typography className={styles.roomFull}><DoDisturbIcon />Room Full</Typography>
                         }
@@ -135,10 +152,10 @@ export default function Home() {
                       <Box className={styles.cardButtonBox}>
                         <Button
                           className={styles.joinButton}
-                          onClick={() => handleJoin(room.uuid)}
-                          disabled={!!isJoined}
+                          onClick={() => handleRoomJoin(room.uuid)}
+                          disabled={!!isJoined || memberCount >= ROOM_MEMBER_LIMIT}
                         >
-                          {!isJoined ? 'Join Room' : 'Already Joined'}
+                          {!isJoined ? (memberCount >= ROOM_MEMBER_LIMIT ? 'Room Full' : 'Join Room') : 'Already Joined'}
                         </Button>
 
                         <Button

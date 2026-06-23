@@ -21,27 +21,32 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import { BarChartComp } from "@/component/bar-chart-comp/bar-chart-comp";
 
 export default function SpecificRoom() {
-  const dispatch = useAppDispatch();
   const router = useRouter();
-  const { uuid } = useParams();
-  const room_uuid = String(uuid);
-  const { roomMembers, roomMembersTotalDocuments } = useAppSelector((state: RootState) => state.roomMemberReducer);
-  const { viewerCounts } = useAppSelector((state: RootState) => state.roomReducer);
-  const { roomChats } = useAppSelector((state: RootState) => state.chatReducer);
-  const members = roomMembers?.[room_uuid];
-  const total_members = roomMembersTotalDocuments?.[room_uuid];
-  const [offset, setOffset] = useState(Number(process.env.NEXT_PUBLIC_PAGE_OFFSET) || 0);
-  const limit = Number(process.env.NEXT_PUBLIC_PAGE_LIMIT) || 10;
+  const dispatch = useAppDispatch();
   const [isLinkOpen, setIsLinkOpen] = useState<boolean>(false);
+  const { roomChats } = useAppSelector((state: RootState) => state.chatReducer);
+  const { viewerCounts } = useAppSelector((state: RootState) => state.roomReducer);
+  const { roomMembers, roomMembersTotalDocuments } = useAppSelector((state: RootState) => state.roomMemberReducer);
+
+  const { room_uuid } = useParams();
+  const curr_room_uuid = String(room_uuid);
+  const members = roomMembers?.[curr_room_uuid];
+  const total_members = roomMembersTotalDocuments?.[curr_room_uuid];
+  const onlineCount = members?.filter(member => member.user.is_online).length;
+
+  const limit = Number(process.env.NEXT_PUBLIC_PAGE_LIMIT) || 10;
+  const [offset, setOffset] = useState(Number(process.env.NEXT_PUBLIC_PAGE_OFFSET) || 0);
 
   const pathname = usePathname();
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8090";
   const searchParams = useSearchParams();
-  const shareUrl = `${BACKEND_URL}${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
   const title = 'Awesome Room Page please visit once';
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8090";
+  const shareUrl = `${BACKEND_URL}${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
 
   useEffect(() => {
-    dispatch(getRoomMembers({ room_uuid: room_uuid, limit: 0, offset: 0 })).unwrap();
+    if (!getRoomMembers.length) {
+      dispatch(getRoomMembers({ room_uuid: curr_room_uuid, limit: 0, offset: 0 })).unwrap();
+    }
   }, []);
 
   const fetchRooms = async () => {
@@ -50,7 +55,7 @@ export default function SpecificRoom() {
 
       const newOffset = offset + limit;
       setOffset(newOffset);
-      await dispatch(getRoomMembers({ room_uuid: room_uuid, limit, offset: newOffset, })).unwrap();
+      await dispatch(getRoomMembers({ room_uuid: curr_room_uuid, limit, offset: newOffset, })).unwrap();
     } catch (error: any) {
       enqueueSnackbar(error, { variant: "error" });
       console.log(error);
@@ -94,16 +99,18 @@ export default function SpecificRoom() {
               Active Members
             </Typography>
             <Typography variant="h4" className={styles.activeMember}>
-              10
+              {onlineCount}
             </Typography>
           </Box>
+
+          <Divider orientation="vertical" variant="middle" flexItem className={styles.divider} />
 
           <Box className={styles.viewInfo}>
             <Typography variant="h2" className={styles.viewTitle}>
               Viewers
             </Typography>
             <Typography variant="h4" className={styles.viewerCount}>
-              {viewerCounts[room_uuid] || 0}
+              {viewerCounts[curr_room_uuid] || 0}
             </Typography>
           </Box>
         </Box>
@@ -126,7 +133,7 @@ export default function SpecificRoom() {
             >
               <Box className={styles.roomMemberWrapper}>
                 {members && members.map((member: RoomMember) => {
-                  const lastChat = roomChats[room_uuid]
+                  const lastChat = roomChats[curr_room_uuid]
                     ?.filter(mem => mem.member.user_uuid === member.user_uuid)
                     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 

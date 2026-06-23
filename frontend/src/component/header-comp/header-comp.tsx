@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Box, Button, IconButton, Typography } from "@mui/material"
 import { RootState } from "@/redux/store"
 import styles from "./header-comp.module.css"
@@ -11,12 +11,20 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined';
 import { useState } from "react"
 import CreateRoomModal from "../create-room-modal/create-room-modal"
+import CircleIcon from '@mui/icons-material/Circle';
+import { togglechatDrawerState } from "@/redux/feature/common/common-slice"
 
 export default function HeaderComp() {
     const router = useRouter()
     const dispatch = useAppDispatch();
     const { user } = useAppSelector((state: RootState) => state.authReducer);
+    const { viewerCounts } = useAppSelector((state: RootState) => state.roomReducer);
     const [openCreateRoomModal, setOpenCreateRoomModal] = useState(false);
+
+    const pathname = usePathname();
+    const segments = pathname.split('/');
+    const uuid = segments[2];
+    const chat = segments[3];
 
     const handleLogOut = async () => {
         try {
@@ -40,6 +48,10 @@ export default function HeaderComp() {
         setOpenCreateRoomModal(true);
     };
 
+    const handleDrawerToggle = () => {
+        dispatch(togglechatDrawerState());
+    }
+
     return (
         <Box className={styles.container}>
             <Box className={styles.leftContainer}>
@@ -47,8 +59,19 @@ export default function HeaderComp() {
             </Box>
 
             <Box className={styles.rightContainer}>
-                <Button className={styles.createRoomButton} onClick={handleAddRoomOpen}>Create New Room</Button>
-                <IconButton className={styles.iconButton}><PeopleOutlineOutlinedIcon /></IconButton>
+                {chat &&
+                    <Box className={styles.viewerCountBox}>
+                        <CircleIcon className={styles.viewerCountIcon} />
+                        <Typography variant="h4" className={styles.viewerCount}>
+                            Live Viewers: {viewerCounts[uuid] || 0}
+                        </Typography>
+                    </Box>
+                }
+                {!chat &&
+                    <Button className={styles.createRoomButton} onClick={handleAddRoomOpen}>Create New Room</Button>
+                }
+
+                <IconButton className={styles.iconButton} onClick={handleDrawerToggle}><PeopleOutlineOutlinedIcon /></IconButton>
                 <IconButton className={styles.iconButton}><NotificationsNoneOutlinedIcon /></IconButton>
 
                 {user ? (

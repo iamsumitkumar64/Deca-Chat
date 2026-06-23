@@ -5,6 +5,7 @@ import { GetRoomListingModule } from "./get-room-listing/get-room-listing.module
 import { DeleteRoomModule } from "./delete-room/delete-room.module";
 import { GetPublicRoomListingModule } from "./get-public-room-listing/get-public-room-listing.module";
 import { GetRoomJoinedListingModule } from "./get-room-joined-listing/get-room-joined-listing.module";
+import { GetRoomByUUIDModule } from "./get-room-by-uuid/get-room-by-uuid.module";
 
 @Module({
     imports: [
@@ -13,6 +14,7 @@ import { GetRoomJoinedListingModule } from "./get-room-joined-listing/get-room-j
         DeleteRoomModule,
         GetPublicRoomListingModule,
         GetRoomJoinedListingModule,
+        GetRoomByUUIDModule,
         RouterModule.register([
             {
                 path: 'room',
@@ -22,6 +24,7 @@ import { GetRoomJoinedListingModule } from "./get-room-joined-listing/get-room-j
                     { path: '', module: DeleteRoomModule },
                     { path: 'join', module: GetRoomJoinedListingModule },
                     { path: 'public', module: GetPublicRoomListingModule },
+                    { path: '', module: GetRoomByUUIDModule },
                 ],
             },
         ]),

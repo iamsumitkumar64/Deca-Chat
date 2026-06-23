@@ -5,7 +5,6 @@
   scroll-behavior: smooth;
   transition: all ease .5s;
   overflow: auto;
-  color: #e5e5ff;
 }
 
 body {
@@ -25,4 +24,19 @@ p {
   overflow: hidden;
   text-overflow: ellipsis;
   word-break: break-all;
+}
+
+/* Target the outlined border globally */
+.MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border: none !important;
+}
+
+/* Optional: Prevent border from reappearing on hover */
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border: none !important;
+}
+
+/* Optional: Prevent border from reappearing when focused */
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border: none !important;
 }
