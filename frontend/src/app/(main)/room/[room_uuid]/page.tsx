@@ -148,6 +148,7 @@ export default function SpecificRoom() {
                         <FiberManualRecordIcon className={member.user.is_online ? styles.bottomGreenDotMessaging : styles.bottomGrayDotMessaging} />
 
                         <Box className={styles.cardBoxContent}>
+                          <Typography className={styles.email}>Name : {member.user.name || 'N/A'}</Typography>
                           <Typography className={styles.email}>Email : {member.user.email}</Typography>
                           <Typography className={styles.lastMessage}>Last Message: {lastChat ? getChatTimeFormat(lastChat.created_at) : 'N/A'}</Typography>
                         </Box>

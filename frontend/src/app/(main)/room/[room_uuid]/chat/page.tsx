@@ -180,7 +180,7 @@ export default function SpecificRoomChat() {
                     <Box className={styles.messageContent}>
                       <Box className={styles.messageInfo}>
                         <Typography variant="caption" className={styles.chatEmail}>
-                          {member ? member.user.email : 'N/A'}
+                          {member ? (member.user.name || member.user.email) : 'N/A'}
                         </Typography>
                         <Typography variant="caption" className={styles.messageTime}>
                           {new Date(chat.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -286,7 +286,7 @@ export default function SpecificRoomChat() {
                     <FiberManualRecordIcon className={member.user.is_online ? styles.bottomGreenDotSideMessaging : styles.bottomGrayDotSideMessaging} />
 
                     <Box className={styles.cardBoxContent}>
-                      <Typography className={styles.email}>{member.user.email}</Typography>
+                      <Typography className={styles.email}>{member.user.name || member.user.email}</Typography>
                       <Typography className={styles.role}>{member.role.toUpperCase()}</Typography>
                     </Box>
                   </CardContent>
@@ -327,7 +327,7 @@ export default function SpecificRoomChat() {
         </Box >
       </Drawer>
 
-      <Typography className={chatDrawerState ? styles.middleTitleDrawerOpen : styles.middleTitle}>Room created by {member?.room.creator.email || 'N/A'} • Welcome to DecaChat</Typography>
+      <Typography className={chatDrawerState ? styles.middleTitleDrawerOpen : styles.middleTitle}>Room created by {member?.room.creator.name || member?.room.creator.email || 'N/A'} • Welcome to DecaChat</Typography>
     </Box >
   );
 }
