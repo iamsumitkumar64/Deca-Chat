@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks.ts";
-import { connectAuthSocket, connectUnAuthSocket, disconnectAuthSocket } from "@/service/socket/socket";
+import { connectAuthSocket, connectUnAuthSocket } from "@/service/socket/socket";
 import { SocketEventNameEnum } from "@/service/socket/socket-event.enum";
 
 import { addJoinedRoom, addMyRoom, removeJoinedRoom, removeMyRoom, updateRoomViewerCount } from "@/redux/feature/room/room-slice";

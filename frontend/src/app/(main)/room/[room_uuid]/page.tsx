@@ -19,12 +19,14 @@ import Image from "next/image";
 import { getChatTimeFormat } from "@/utils/time-format";
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import { BarChartComp } from "@/component/bar-chart-comp/bar-chart-comp";
+import { getRoomChats, getRoomChatsAnalytics } from "@/redux/feature/chat/chat-action";
+import CircleIcon from '@mui/icons-material/Circle';
 
 export default function SpecificRoom() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [isLinkOpen, setIsLinkOpen] = useState<boolean>(false);
-  const { roomChats } = useAppSelector((state: RootState) => state.chatReducer);
+  const { roomChats, roomChatAnalytic } = useAppSelector((state: RootState) => state.chatReducer);
   const { viewerCounts } = useAppSelector((state: RootState) => state.roomReducer);
   const { roomMembers, roomMembersTotalDocuments } = useAppSelector((state: RootState) => state.roomMemberReducer);
 
@@ -44,9 +46,21 @@ export default function SpecificRoom() {
   const shareUrl = `${BACKEND_URL}${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
 
   useEffect(() => {
-    if (!getRoomMembers.length) {
+    // if (!roomMembers[curr_room_uuid]?.length) {
       dispatch(getRoomMembers({ room_uuid: curr_room_uuid, limit: 0, offset: 0 })).unwrap();
-    }
+    // }
+  }, []);
+
+  useEffect(() => {
+    // if (!roomChats[curr_room_uuid]?.length) {
+      dispatch(getRoomChats({ room_uuid: curr_room_uuid, limit: limit, offset: 0 })).unwrap();
+    // }
+  }, []);
+
+  useEffect(() => {
+    // if (!roomChatAnalytic[curr_room_uuid]?.length) {
+      dispatch(getRoomChatsAnalytics({ room_uuid: curr_room_uuid })).unwrap();
+    // }
   }, []);
 
   const fetchRooms = async () => {
@@ -60,6 +74,23 @@ export default function SpecificRoom() {
       enqueueSnackbar(error, { variant: "error" });
       console.log(error);
     }
+  };
+
+  const labels = roomChatAnalytic[curr_room_uuid]?.map(item => {
+    const dateObj = new Date(item.date);
+    // Format to a readable string, e.g., "Jun 24"
+    return dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+  });
+
+  const chartData = {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Message Velocity',
+        data: roomChatAnalytic[curr_room_uuid]?.map(item => item.count) || 0,
+        backgroundColor: ['#A0A3FF', '#C0C1FF'],
+      },
+    ],
   };
 
   return (
@@ -148,9 +179,13 @@ export default function SpecificRoom() {
                         <FiberManualRecordIcon className={member.user.is_online ? styles.bottomGreenDotMessaging : styles.bottomGrayDotMessaging} />
 
                         <Box className={styles.cardBoxContent}>
-                          <Typography className={styles.email}>Name : {member.user.name || 'N/A'}</Typography>
-                          <Typography className={styles.email}>Email : {member.user.email}</Typography>
-                          <Typography className={styles.lastMessage}>Last Message: {lastChat ? getChatTimeFormat(lastChat.created_at) : 'N/A'}</Typography>
+                          <Typography className={styles.name}>{member.user.name || 'N/A'}</Typography>
+
+                          <Box className={styles.downBox}>
+                            <Typography className={styles.email}>{member.user.email}</Typography>
+                            <CircleIcon className={styles.downBoxIcon} />
+                            <Typography className={styles.lastMessage}>Last Message: {lastChat ? getChatTimeFormat(lastChat.created_at) : 'N/A'}</Typography>
+                          </Box>
                         </Box>
                       </CardContent>
                     </Card>
@@ -174,7 +209,7 @@ export default function SpecificRoom() {
             </Typography>
 
             <Box className={styles.manageActivityChartComp}>
-              <BarChartComp />
+              <BarChartComp chartData={chartData} />
             </Box>
           </Box>
         </Box>

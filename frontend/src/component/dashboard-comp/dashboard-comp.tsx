@@ -25,16 +25,26 @@ export default function DashboardComp() {
   const [activePath, setActivePath] = useState(shareUrl);
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { publicRooms } = useAppSelector((state: RootState) => state.roomReducer);
+  const { publicRooms, joinedRooms, myrooms } = useAppSelector((state: RootState) => state.roomReducer);
   const { user } = useAppSelector((state: RootState) => state.authReducer);
 
   const handleActivePath = (path: string) => {
+    if ((path == "/room" || path == "/room/join") && !user) {
+      enqueueSnackbar("Login First", { variant: "warning" });
+      return;
+    }
+
     setActivePath(path);
-    router.push(path);
+    router.replace(path);
   }
 
   const handleRoomDelete = async (uuid: string) => {
     try {
+      if (!user) {
+        enqueueSnackbar("Login First", { variant: "warning" });
+        return;
+      }
+
       await dispatch(deleteRoom({ uuid })).unwrap();
       router.replace('/');
     } catch (error: any) {
@@ -56,18 +66,18 @@ export default function DashboardComp() {
         </Box>
 
         <Box
-          className={`${styles.menuItem} ${activePath === "/rooms" ? styles.active : ""
+          className={`${styles.menuItem} ${activePath === "/room" ? styles.active : ""
             }`}
-          onClick={() => handleActivePath("/rooms")}
+          onClick={() => handleActivePath("/room")}
         >
           <RoomPreferencesIcon />
           <Typography>Your Rooms</Typography>
         </Box>
 
         <Box
-          className={`${styles.menuItem} ${activePath === "/rooms/join" ? styles.active : ""
+          className={`${styles.menuItem} ${activePath === "/room/join" ? styles.active : ""
             }`}
-          onClick={() => handleActivePath("/rooms/join")}
+          onClick={() => handleActivePath("/room/join")}
         >
           <GroupsIcon />
           <Typography>Joined Rooms</Typography>
@@ -85,9 +95,13 @@ export default function DashboardComp() {
 
       <Box className={styles.bottomContainer}>
         {
-          getDynamicRoute(activePath).room_uuid &&
-          publicRooms.find((room) => room.uuid == curr_room_uuid)?.creator_uuid == user?.uuid &&
-          <Box className={styles.deleteRoom} onClick={() => handleRoomDelete(getDynamicRoute(activePath)?.room_uuid || '')}>
+          getDynamicRoute(activePath).room_uuid
+          && (
+            publicRooms.find((room) => room.uuid == curr_room_uuid)?.creator_uuid == user?.uuid ||
+            myrooms.find((room) => room.uuid == curr_room_uuid)?.creator_uuid == user?.uuid ||
+            joinedRooms.find((room) => room.uuid == curr_room_uuid)?.creator_uuid == user?.uuid
+          ) &&
+          < Box className={styles.deleteRoom} onClick={() => handleRoomDelete(getDynamicRoute(activePath)?.room_uuid || '')}>
             <HighlightOffIcon />
             <Typography className={styles.deleteRoom}>Close Room</Typography>
           </Box>
@@ -98,6 +112,6 @@ export default function DashboardComp() {
           <Typography>Help</Typography>
         </Box>
       </Box>
-    </Box>
+    </Box >
   );
 }

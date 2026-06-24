@@ -14,7 +14,7 @@ import { enqueueSnackbar } from "notistack";
 import { createRoomChat, deleteRoomChat, getRoomChats } from "@/redux/feature/chat/chat-action";
 import DeleteIcon from '@mui/icons-material/Delete';
 import { connectUnAuthSocket } from "@/service/socket/socket";
-import { SocketEventSubscribeEnum } from "@/service/socket/socket-event.enum";
+import { SocketEventGroupRoomEnum, SocketEventNameEnum } from "@/service/socket/socket-event.enum";
 import { addChat, removeChat } from "@/redux/feature/chat/chat-slice";
 import { RoomChat } from "@/redux/feature/chat/chat-type";
 import Image from "next/image";
@@ -22,6 +22,8 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import EmojiPicker from 'emoji-picker-react';
 import { RoomMember } from "@/redux/feature/member/member-type";
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
+import { RoomMemberRole } from "@/redux/feature/member/room-member.enum";
+import { updateRoomViewerCount } from "@/redux/feature/room/room-slice";
 let unauth_socket: any;
 
 export default function SpecificRoomChat() {
@@ -40,40 +42,50 @@ export default function SpecificRoomChat() {
   const chats = roomChats?.[curr_room_uuid] || [];
   const total_members = roomMembersTotalDocuments?.[curr_room_uuid];
   const totalChats = roomChatsTotalDocuments?.[curr_room_uuid] || 0;
-  const member = roomMembers?.[curr_room_uuid]?.find((member) => member.user_uuid == user?.uuid);
+  const member = members?.find((member) => member.user_uuid == user?.uuid);
+  const creator = members?.find((member) => member.role == RoomMemberRole.CREATOR);
 
   const [offset, setOffset] = useState(0);
   const limit = Number(process.env.NEXT_PUBLIC_PAGE_LIMIT) || 10;
   const ROOM_MEMBER_LIMIT = Number(process.env.NEXT_PUBLIC_ROOM_MEMBER_LIMIT) || 10;
 
   useEffect(() => {
-    if (!roomMembers[curr_room_uuid]?.length || !roomChats[curr_room_uuid]?.length) {
-      dispatch(getRoomMembers({ room_uuid: curr_room_uuid, limit: 0, offset: 0 })).unwrap();
-      dispatch(getRoomChats({ room_uuid: curr_room_uuid, limit: limit, offset: 0 })).unwrap();
-    }
+    // if (!roomChats[curr_room_uuid]?.length) {
+    dispatch(getRoomChats({ room_uuid: curr_room_uuid, limit: limit, offset: 0 })).unwrap();
+    // }
+  }, [room_uuid]);
+
+  useEffect(() => {
+    // if (!roomMembers[curr_room_uuid]?.length) {
+    dispatch(getRoomMembers({ room_uuid: curr_room_uuid, limit: 0, offset: 0 })).unwrap();
+    // }
   }, [room_uuid]);
 
   useEffect(() => {
     unauth_socket = connectUnAuthSocket();
 
     if (room_uuid) {
-      unauth_socket.emit(SocketEventSubscribeEnum.SUBSCRIBE_ROOM_CONNECT, { room_uuid });
+      unauth_socket.emit(SocketEventGroupRoomEnum.GROUP_ROOM_CONNECT, { room_uuid });
 
       const handleSocketNewChat = (data: any) => {
-        console.log("Received :", SocketEventSubscribeEnum.SUBSCRIBE_ROOM_CHAT_CREATED, data);
+        console.log("Received :", SocketEventGroupRoomEnum.GROUP_ROOM_CHAT_CREATED, data);
         dispatch(addChat(data));
       };
 
       const handleSocketDeleteChat = (data: any) => {
-        console.log("Received :", SocketEventSubscribeEnum.SUBSCRIBE_ROOM_CHAT_DELETED, data);
+        console.log("Received :", SocketEventGroupRoomEnum.GROUP_ROOM_CHAT_DELETED, data);
         dispatch(removeChat(data));
       };
 
-      unauth_socket.on(SocketEventSubscribeEnum.SUBSCRIBE_ROOM_CHAT_CREATED, handleSocketNewChat);
-      unauth_socket.on(SocketEventSubscribeEnum.SUBSCRIBE_ROOM_CHAT_DELETED, handleSocketDeleteChat);
+      unauth_socket.on(SocketEventGroupRoomEnum.GROUP_ROOM_CHAT_CREATED, handleSocketNewChat);
+      unauth_socket.on(SocketEventGroupRoomEnum.GROUP_ROOM_CHAT_DELETED, handleSocketDeleteChat);
+      unauth_socket.on(SocketEventNameEnum.ROOM_VIEWER_COUNT, (data: { room_uuid: string; count: number }) => {
+        console.log(SocketEventNameEnum.ROOM_VIEWER_COUNT, data);
+        dispatch(updateRoomViewerCount(data));
+      });
 
       return () => {
-        unauth_socket.off(SocketEventSubscribeEnum.SUBSCRIBE_ROOM_CHAT_CREATED, handleSocketNewChat);
+        unauth_socket.off(SocketEventGroupRoomEnum.GROUP_ROOM_CHAT_CREATED, handleSocketNewChat);
       };
     }
   }, [room_uuid, dispatch]);
@@ -163,34 +175,39 @@ export default function SpecificRoomChat() {
             hasMore={chats.length < totalChats}
             loader={<Box className={styles.loader}><CircularProgress size={30} /></Box>}
             inverse={true}
-            endMessage={<Typography className={styles.endMessage}>Yay! You have seen it all</Typography>}
+            endMessage={!chats.length && <Typography className={styles.endMessage}>Yay! You have seen it all</Typography>}
             scrollableTarget="scrollableDiv"
           >
             <Box className={styles.roomChatWrapper}>
-              {chats.map((chat: RoomChat) => {
+              {chats.map((chat: RoomChat, index: number) => {
                 const member = members?.find((member) => member.user_uuid == chat.member?.user_uuid);
+                const profileShown = (!chats[index - 1] || chats[index - 1].member_uuid !== chat.member_uuid);
 
                 return (
                   <Box key={chat.uuid} className={styles.chatMessage}>
-                    <Box className={styles.avatarBox}>
-                      <Image src={member?.user.profile_image || ''} width={100} height={100} alt="Profile image not found" className={styles.profileImage} />
-                      {/* <FiberManualRecordIcon className={member?.user.is_online ? styles.bottomGreenDotMessaging : styles.bottomGrayDotMessaging} /> */}
-                    </Box>
-
-                    <Box className={styles.messageContent}>
-                      <Box className={styles.messageInfo}>
-                        <Typography variant="caption" className={styles.chatEmail}>
-                          {member ? (member.user.name || member.user.email) : 'N/A'}
-                        </Typography>
-                        <Typography variant="caption" className={styles.messageTime}>
-                          {new Date(chat.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Typography>
-                        {member?.room.creator.uuid === member?.user_uuid && <Typography variant="caption" className={styles.creatorTag}>
-                          CREATOR
-                        </Typography>}
+                    {profileShown &&
+                      <Box className={styles.avatarBox}>
+                        <Image src={member?.user.profile_image || ''} width={100} height={100} alt="Profile image not found" className={styles.profileImage} />
+                        {/* <FiberManualRecordIcon className={member?.user.is_online ? styles.bottomGreenDotMessaging : styles.bottomGrayDotMessaging} /> */}
                       </Box>
+                    }
 
-                      <Box className={styles.messageData}>
+                    <Box className={profileShown ? styles.messageContent : styles.messageContentProfileNotShown}>
+                      {profileShown &&
+                        <Box className={styles.messageInfo}>
+                          <Typography variant="caption" className={styles.chatEmail}>
+                            {member ? (member.user.name || member.user.email) : 'N/A'}
+                          </Typography>
+                          <Typography variant="caption" className={styles.messageTime}>
+                            {new Date(chat.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Typography>
+                          {member?.room.creator.uuid === member?.user_uuid && <Typography variant="caption" className={styles.creatorTag}>
+                            CREATOR
+                          </Typography>}
+                        </Box>
+                      }
+
+                      <Box className={profileShown ? styles.messageData : styles.messageDataProfileNotShown}>
                         {chat.member?.user_uuid === user?.uuid && (
                           <IconButton size="small" onClick={() => handleDeleteChat(chat.uuid, chat.room_uuid)} className={styles.deleteBtn}>
                             <DeleteIcon fontSize="inherit" />
@@ -258,7 +275,7 @@ export default function SpecificRoomChat() {
             width: '20%',
             height: '93%',
             marginTop: '3.5%',
-            bgcolor:'transparent'
+            bgcolor: 'transparent'
           },
         }}
       >
@@ -327,7 +344,7 @@ export default function SpecificRoomChat() {
         </Box >
       </Drawer>
 
-      <Typography className={chatDrawerState ? styles.middleTitleDrawerOpen : styles.middleTitle}>Room created by {member?.room.creator.name || member?.room.creator.email || 'N/A'} • Welcome to DecaChat</Typography>
+      <Typography className={chatDrawerState ? styles.middleTitleDrawerOpen : styles.middleTitle}>Room created by {creator?.user.name || creator?.user.email || 'N/A'} • Welcome to DecaChat</Typography>
     </Box >
   );
 }

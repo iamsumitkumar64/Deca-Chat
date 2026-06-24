@@ -38,7 +38,7 @@ export default function Home() {
   }, [searchQuery]);
 
   useEffect(() => {
-    if (!joinedRooms.length && user) {
+    if (user) {
       dispatch(getJoinedRooms({ limit, offset: 0, })).unwrap();
     }
   }, [user]);
@@ -173,7 +173,7 @@ export default function Home() {
                         <Typography className={styles.memberCount}><VisibilityOutlinedIcon />{viewerCounts[room.uuid] || 0} viewers</Typography>
                         {
                           memberCount <= ROOM_MEMBER_LIMIT ?
-                            <Typography className={styles.memberCount}><GroupsIcon />{memberCount} members</Typography> :
+                            <Typography className={styles.memberCount}><GroupsIcon />{room.membersCount} members</Typography> :
                             <Typography className={styles.roomFull}><DoDisturbIcon />Room Full</Typography>
                         }
                       </Box>
