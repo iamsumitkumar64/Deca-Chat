@@ -47,19 +47,19 @@ export default function SpecificRoom() {
 
   useEffect(() => {
     // if (!roomMembers[curr_room_uuid]?.length) {
-      dispatch(getRoomMembers({ room_uuid: curr_room_uuid, limit: 0, offset: 0 })).unwrap();
+    dispatch(getRoomMembers({ room_uuid: curr_room_uuid, limit: 0, offset: 0 })).unwrap();
     // }
   }, []);
 
   useEffect(() => {
     // if (!roomChats[curr_room_uuid]?.length) {
-      dispatch(getRoomChats({ room_uuid: curr_room_uuid, limit: limit, offset: 0 })).unwrap();
+    dispatch(getRoomChats({ room_uuid: curr_room_uuid, limit: limit, offset: 0 })).unwrap();
     // }
   }, []);
 
   useEffect(() => {
     // if (!roomChatAnalytic[curr_room_uuid]?.length) {
-      dispatch(getRoomChatsAnalytics({ room_uuid: curr_room_uuid })).unwrap();
+    dispatch(getRoomChatsAnalytics({ room_uuid: curr_room_uuid })).unwrap();
     // }
   }, []);
 
@@ -92,7 +92,7 @@ export default function SpecificRoom() {
         {
           label: 'Message Velocity',
           data,
-          backgroundColor: ['#A0A3FF', '#C0C1FF'],
+          backgroundColor: ['#F2EFFF', '#A0A3FF', '#C0C1FF', '#E1E0FF'],
         },
       ],
     };
